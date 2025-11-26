@@ -154,35 +154,19 @@ def process_books(books_path: Path):
 
 
 def process_borrowers(path: Path):
-        """
-        Read and normalize borrowers CSV and produce a cleaned borrowers table.
+    df = pd.read_csv(path, dtype=str, keep_default_na=False)
+    for col in df.columns:
+        df[col] = df[col].map(normalize_whitespace)
 
-        Parsing steps:
-        - Read the CSV with all columns as strings and treat empty cells as empty strings.
-        - Normalize whitespace across all columns.
-        - Compose the desired output columns:
-            - Card_id: from the input `ID0000id` field (keeps original ID formatting).
-            - Bname: concatenate first_name and last_name, strip, and apply `title_case`.
-            - Address: build a single address string from address, city, state joined with commas,
-                trimming any trailing commas/spaces.
-            - Phone: copy the phone field as-is (after whitespace normalization).
-        - Drop duplicate Card_id rows and reset the index.
+    # Compose fields
+    df['Card_id'] = df['ID0000id']
+    df['Bname'] = (df['first_name'].fillna('') + ' ' + df['last_name'].fillna('')).str.strip().map(title_case)
+    df['Address'] = (df['address'].fillna('') + ', ' + df['city'].fillna('') + ', ' + df['state'].fillna('')).str.strip(' ,')
+    df['Phone'] = df['phone']
+    df['Ssn'] = df['ssn'].str.replace('-', '', regex=False) #keeps Ssn as digits only
 
-        Input: Path to borrowers CSV.
-        Output: DataFrame with columns ['Card_id', 'Bname', 'Address', 'Phone'].
-        """
-        df = pd.read_csv(path, dtype=str, keep_default_na=False)
-        for col in df.columns:
-                df[col] = df[col].map(normalize_whitespace)
-
-        # Compose fields
-        df['Card_id'] = df['ID0000id']
-        df['Bname'] = (df['first_name'].fillna('') + ' ' + df['last_name'].fillna('')).str.strip().map(title_case)
-        df['Address'] = (df['address'].fillna('') + ', ' + df['city'].fillna('') + ', ' + df['state'].fillna('')).str.strip(' ,')
-        df['Phone'] = df['phone']
-
-        out = df[['Card_id', 'Bname', 'Address', 'Phone']].drop_duplicates(subset=['Card_id']).reset_index(drop=True)
-        return out
+    out = df[['Card_id', 'Bname', 'Address', 'Phone', 'Ssn']].drop_duplicates(subset=['Card_id']).reset_index(drop=True)
+    return out
 
 
 def main():
